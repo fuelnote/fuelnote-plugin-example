@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": [],
+    "noUnusedLocals": true
+  },
+  "include": [
+    "../../dts/global.d.ts",
+    "./*.tsx"
+  ]
+}

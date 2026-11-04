@@ -1,0 +1,135 @@
+name: Release
+
+# 推送 vX.Y.Z 标签后：核对版本号（有远程资源时也核对它的地址），把运行需要的文件打成 <仓库名>.zip，
+# 用 CHANGELOG.md 里这个版本的一节作为说明，发布到 GitHub Release。
+# 和油记的发布流程相同；用这个模板建的插件不用改：包名跟着仓库名，打包的是仓库里除说明和发布流程以外的文件。
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  PACKAGE_FILE: ${{ github.event.repository.name }}.zip
+  RELEASE_BRANCH: main
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package & Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $GITHUB_REF_NAME"
+            exit 1
+          fi
+
+      - name: Verify tag is on release branch
+        run: |
+          git fetch origin "${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}"
+          TAG_COMMIT=$(git rev-parse "$GITHUB_REF_NAME^{commit}")
+          git merge-base --is-ancestor "$TAG_COMMIT" "origin/${RELEASE_BRANCH}" || {
+            echo "Release tag must point to a commit reachable from ${RELEASE_BRANCH}"
+            exit 1
+          }
+
+      - name: Detect pre-release
+        id: version
+        run: |
+          if [[ "$GITHUB_REF_NAME" =~ - ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 版本号要和标签一样；有 remoteResource 时，地址必须是这个仓库的最新发布包（用模板建的插件忘了改时不发布）
+      - name: Validate script metadata
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          SCRIPT_VERSION=$(python3 -c "import json; print(json.load(open('script.json'))['version'])")
+          REMOTE_URL=$(python3 -c "import json; print((json.load(open('script.json')).get('remoteResource') or {}).get('url') or '')")
+          EXPECTED_URL="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/${PACKAGE_FILE}"
+
+          echo "Tag version:         ${TAG_VERSION}"
+          echo "script.json version: ${SCRIPT_VERSION}"
+          echo "remoteResource:      ${REMOTE_URL:-none}"
+
+          if [ "$TAG_VERSION" != "$SCRIPT_VERSION" ]; then
+            echo "Version mismatch: tag is ${TAG_VERSION} but script.json is ${SCRIPT_VERSION}"
+            exit 1
+          fi
+
+          if [ -n "$REMOTE_URL" ] && [ "$REMOTE_URL" != "$EXPECTED_URL" ]; then
+            echo "remoteResource.url must be ${EXPECTED_URL}"
+            exit 1
+          fi
+
+          python3 -c "import json, sys; sys.exit(0 if json.load(open('fuelnote.json')).get('contract') == 1 else 'fuelnote.json must be {\"contract\": 1}')"
+
+      # 只打包运行需要的文件：仓库里的文件去掉说明、许可证、发布流程和开发用的文件
+      - name: Prepare package
+        run: |
+          rm -rf dist
+          mkdir -p dist/package
+          git -c core.quotepath=off ls-files \
+            | grep -vE '^(\.github/|docs/|tests/|tools/)|^(\.gitignore|README\.md|CHANGELOG\.md|LICENSE|package(-lock)?\.json|tsconfig\.json)$' \
+            | while IFS= read -r f; do
+                mkdir -p "dist/package/$(dirname "$f")"
+                cp "$f" "dist/package/$f"
+              done
+
+      - name: Create zip
+        run: |
+          cd dist/package
+          zip -r "../${PACKAGE_FILE}" .
+
+      - name: Validate package contents
+        run: |
+          unzip -Z1 "dist/${PACKAGE_FILE}" | sort > dist/contents.txt
+          cat dist/contents.txt
+
+          ENTRY=$(python3 -c "import json; print(json.load(open('script.json'))['entry'])")
+          for f in script.json fuelnote.json "$ENTRY"; do
+            grep -qx "$f" dist/contents.txt || {
+              echo "$f missing from package"
+              exit 1
+            }
+          done
+
+      - name: Release notes from CHANGELOG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="$VERSION" '
+            /^## / { if (found) exit; if (index($0, "## " v " ") == 1) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > dist/release-notes.md
+
+          if [ -z "$(tr -d '[:space:]' < dist/release-notes.md)" ]; then
+            echo "CHANGELOG.md has no section for ${VERSION}"
+            exit 1
+          fi
+          cat dist/release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2.6.2
+        with:
+          name: ${{ github.ref_name }}
+          body_path: dist/release-notes.md
+          prerelease: ${{ steps.version.outputs.is_prerelease }}
+          files: |
+            dist/${{ env.PACKAGE_FILE }}
