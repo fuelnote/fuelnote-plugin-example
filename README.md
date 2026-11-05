@@ -72,7 +72,7 @@ Script.run({ name: 脚本名, queryParameters: { fuelnote: 1, action, ...参数 
 `index.tsx` 最后的 `run()` 就是入口：
 
 - `Script.queryParameters` 里有 `fuelnote` 时，是油记在调用：按 `action` 处理，处理完一定 `Script.exit(结果)`。出错时也要 exit，所以最外层包一层 try/catch。不 exit，油记会一直等到超时。
-- 没有 `fuelnote` 时，是用户自己打开的：显示插件自己的页面，例如连接、填凭据。
+- 没有 `fuelnote` 时，是用户自己打开的：显示插件自己的页面，例如连接、填凭据。页面用大标题，下面一行写版本（`navigationSubtitle` 写「版本 ${Script.metadata.version}」），用户同步了新版以后一打开就知道装的是哪一版。
 - 成功返回 `{ ok: true, ... }`，失败返回 `{ ok: false, error, message }`；`message` 直接显示给用户（契约第 3 节）。
 
 ### 4. 每个动作
@@ -89,6 +89,8 @@ Script.run({ name: 脚本名, queryParameters: { fuelnote: 1, action, ...参数 
 | `info` | `info()` | 慢的分批给：没查完时带 `next` 和 `progress`；一行带 `place`（名称和坐标）时，油记长按这一行可以导航 |
 
 每个动作的参数、字段、单位和油记等多久，见契约第 4～9 节。
+
+用户可以在油记的插件详情里关掉其中几项（油记 2.7 起），关掉的油记就不再调用。插件不用管这件事：`describe` 照常写提供的全部，每个动作照常回答（契约第 13 节）。
 
 ### 5. 出错和超时
 
@@ -138,6 +140,7 @@ Script.run({ name: 脚本名, queryParameters: { fuelnote: 1, action, ...参数 
 - [ ] 取不全时整次返回错误，不返回一部分。
 - [ ] 账号打码；凭据只在钥匙串；仓库里没有密钥和真实数据。
 - [ ] 加了能力、改了名称时升了 `version`。
+- [ ] 自己的页面用大标题，下面一行写版本。
 
 ## 许可证
 
