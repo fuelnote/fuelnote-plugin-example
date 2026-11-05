@@ -86,7 +86,7 @@ Script.run({ name: 脚本名, queryParameters: { fuelnote: 1, action, ...参数 
 | `vehicles`、`trips`、`vehicle_status` | `CAR`、`trips()`、`vehicleStatus()` | 行程按开始时间升序，里程用熄火时的里程表 |
 | `service` | `serviceVisits()` | 只返回已结算的进店，新的在前；结算明细的各行加起来等于自付 |
 | `fuel_price` | `EXAMPLE_PRICES` | 按传来的省、市给挂牌价，最好不用登录 |
-| `info` | `info()` | 慢的分批给：没查完时带 `next` 和 `progress`；一行带 `place`（名称和坐标）时，油记长按这一行可以导航 |
+| `info` | `info()` | 慢的分批给：没查完时带 `next` 和 `progress`；一行带 `place`（名称和坐标）时，油记长按这一行可以导航；只给参数 `cards` 里要的卡片（`wantedCards()`），卡片都要在 `describe` 的 `cards` 里声明 |
 
 每个动作的参数、字段、单位和油记等多久，见契约第 4～9 节。
 

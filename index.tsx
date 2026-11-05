@@ -145,8 +145,8 @@ function serviceVisits(now: number) {
   ]
 }
 
-/** 信息卡片（2.6）：describe 里声明的那一张 */
-const CARD = { id: "sample", title: "示例卡片" }
+/** 信息卡片：describe 里声明的两张（1.4.0 起多一张「示例公告」）。油记的插件详情里每张一行，可以分别启用、停用 */
+const CARDS = [{ id: "sample", title: "示例卡片" }, { id: "notice", title: "示例公告" }]
 
 /** 卡片一行的地点：名称和坐标（WGS-84）；油记长按这一行可以导航到这里 */
 const placeOfRow = (st: Station) => ({ name: st.name, lng: st.lng, lat: st.lat })
@@ -158,13 +158,22 @@ function endOfToday(): number {
   return d.getTime()
 }
 
+/** 油记要的卡片（契约第 9 节的 cards，用户启用的）；没传时全部 */
+function wantedCards(q: Record<string, any>): string[] {
+  if (Array.isArray(q.cards)) return q.cards.map(String)
+  if (typeof q.cards === "string" && q.cards) return q.cards.split(",")
+  return CARDS.map(c => c.id)
+}
+
 /**
  * 信息卡片（契约第 9 节）：分两批给，第一批带 next，第二批是全部的行。每批给到这一批为止的全部卡片，油记整个替换。
+ * 只给油记要的卡片：示例卡片第一批一行、第二批两行；示例公告第二批才有。
  * 不用登录；行是编的，一行「好」、一行「提醒」；标号用油记传来的默认标号
  */
 async function info(q: Record<string, any>): Promise<Record<string, unknown>> {
   const grade = Number(q.grade) || 95
   const last = q.cursor === "1"
+  const wanted = wantedCards(q)
   // 慢一点，在油记里看得到「正在读」
   await new Promise<void>(resolve => setTimeout(resolve, 800))
   // 一行：左边站名，下面「距离 · 标号 · 说明」，右边数值；每段带单位或本身是名称，一看就知道是什么
@@ -172,12 +181,18 @@ async function info(q: Record<string, any>): Promise<Record<string, unknown>> {
     { label: STATIONS.a.name, value: "每升减 0.3 元", detail: `1.2 km · ${grade}# · 示例的立减`, tone: "good", place: placeOfRow(STATIONS.a) },
     { label: STATIONS.b.name, value: "明天调价", detail: "4.5 km · 示例的提醒", tone: "warn", place: placeOfRow(STATIONS.b) },
   ]
-  const card = {
-    ...CARD, icon: "tag.fill", tone: "good", rows: last ? rows : rows.slice(0, 1),
+  const sample = {
+    ...CARDS[0], icon: "tag.fill", tone: "good", rows: last ? rows : rows.slice(0, 1),
     ...(last ? { empty: "今天没有示例内容" } : {}),
     note: "示例插件编的内容，不是哪里的真实信息。", summary: `人民广场 ${grade}# 每升减 0.3 元`, until: endOfToday(),
   }
-  return last ? { ok: true, cards: [card], next: null } : { ok: true, cards: [card], next: "1", progress: "正在读 1/2" }
+  const notice = {
+    ...CARDS[1], icon: "megaphone.fill", tone: null,
+    rows: [{ label: "示例插件 1.4.0", value: "两张卡片", detail: "可在油记的插件详情中分别启用或停用", tone: null }],
+    empty: "今天没有示例公告", note: "示例插件编的内容。", summary: "示例插件有两张卡片", until: endOfToday(),
+  }
+  const cards = [sample, ...(last ? [notice] : [])].filter(c => wanted.includes(c.id))
+  return last ? { ok: true, cards, next: null } : { ok: true, cards, next: "1", progress: "正在读 1/2" }
 }
 
 /** 未连接、已过期时数据动作都返回错误 */
@@ -218,7 +233,7 @@ async function handle(action: string, q: Record<string, any>): Promise<unknown> 
   if (action === "describe") {
     return {
       ok: true, contract: CONTRACT, id: "example", name: "示例", version: Script.metadata.version,
-      capabilities: ["fuel", "vehicles", "trips", "vehicle_status", "service", "fuel_price", "info"], cards: [CARD],
+      capabilities: ["fuel", "vehicles", "trips", "vehicle_status", "service", "fuel_price", "info"], cards: CARDS,
     }
   }
   if (action === "status") return status()
