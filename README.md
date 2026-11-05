@@ -1,4 +1,4 @@
-# 油记·示例插件
+# 油记·示例
 
 [油记](https://github.com/fuelnote/fuelnote)的数据源插件示例，也是写插件的模板。它不连任何服务：交易、车辆、行程、车况、养修、油价和信息卡片都是按当前时间编的，演示[插件契约](https://github.com/fuelnote/fuelnote/blob/main/docs/plugins.md)里的每一个动作。
 
@@ -33,7 +33,7 @@
    https://github.com/fuelnote/fuelnote-plugin-example/releases/latest/download/fuelnote-plugin-example.zip
    ```
 
-2. 打开油记的「设置 › 数据源 › 添加插件」，选「油记·示例插件」。
+2. 打开油记的「设置 › 数据源 › 添加插件」，选「油记·示例」。
 3. 记加油时点「从示例选」，能看到编的交易。最近一次分两笔付，可以合成一次加油；旁边单价不同、油站不同的两笔不能合成。
 4. 记录页「当前」下面有一组「示例卡片」。轻点打开，长按一行可以导航到那个示例油站。
 5. 在 Scripting 里直接运行这个插件，可以切换「已连接」「已过期」「未连接」，看油记在出错时的样子。

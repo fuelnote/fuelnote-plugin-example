@@ -1,4 +1,4 @@
-// 油记·示例插件：油记数据源契约的示例实现（契约见 https://github.com/fuelnote/fuelnote/blob/main/docs/plugins.md，怎么改成自己的插件见 README）。
+// 油记·示例：油记数据源契约的示例实现（契约见 https://github.com/fuelnote/fuelnote/blob/main/docs/plugins.md，怎么改成自己的插件见 README）。
 // 返回按当前时间编的加油交易、一辆示例车的行程、车况和养修，固定的示例油价，以及一张分两批给的示例信息卡片。
 // 被油记调用时 Script.queryParameters 带 fuelnote: 1 和 action；处理完一定 Script.exit(对象)，出错时也一样，否则油记会一直等。
 // 自己打开时是连接页：可以切换「已连接」「已过期」「未连接」，用来看油记在出错时的样子。
