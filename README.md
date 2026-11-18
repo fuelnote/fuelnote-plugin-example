@@ -103,7 +103,8 @@ Script.run({ name: 脚本名, queryParameters: { fuelnote: 1, action, ...参数 
 - 凭据（账号、Cookie、token）存在插件自己的钥匙串（`Keychain`）里。油记读不到，油记的备份里也没有。
 - `status`、`connect` 返回的账号先打码，例如「示例账号 ****0001」。
 - 公开的仓库里不要写密钥、Cookie、手机号、车牌和真实的交易。
-- 要用手机的位置时，插件自己取（和油记共用 Scripting 的定位权限）。油记交给插件的位置最多到省、市。
+- 油记调用插件时，插件使用它自己的脚本权限（Scripting 文档「脚本权限」），和油记的权限无关。要用定位这类需要授权的能力时，由插件自己申请，建议在插件页打开时调 `Script.requestAccess`（例如 `["location"]`）。手机的位置由插件自己取；油记交给插件的位置最多到省、市。
+- 少量的状态和缓存建议存在 `Storage`（默认插件私有，不需要权限）。`FileManager` 的同步接口没有授权时直接出错，要先 `await Script.requestAccess(["fileSystem"])`（契约第 2 节）。
 
 ### 7. 发布和更新
 
